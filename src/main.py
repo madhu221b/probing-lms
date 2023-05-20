@@ -7,10 +7,16 @@ from argparse import ArgumentParser
 from collections import defaultdict
 import numpy as np
 import torch
+import pickle
 
 from lstm.model import RNNModel
 from data import get_data
 from train import train
+
+def dump_pkl(content, file_name):
+    file = open(file_name, 'wb')
+    pickle.dump(content, file)
+    file.close()
 
 def load_lstm():
     model_location = '../state_dict.pt'  
@@ -34,9 +40,21 @@ def execute_experiment(exp):
         print("Training the probe..")
         data = get_data(model, tokenizer)
         print("Data has been loaded.")
-
+        
         n_epochs = 40
         test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp)
+        
+        ## Rank Dim Experiment ##
+        # rank_dim_list =  [pow(2,_) for _ in range(0,10)]
+        # test_uuas_list = []
+        # for rank_dim in rank_dim_list:
+        #    test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp, rank_dim=rank_dim)
+        #    test_uuas_list.append(test_uuas)
+        #    print("Test UUAS : {}, Rank Dim : {}".format(test_uuas, rank_dim))
+
+        # data = {"rankdim":rank_dim_list, "uuas":test_uuas_list}
+        # dump_pkl(data, "results/plots/ranks_{}.pkl".format(exp))
+        
 
 
 
