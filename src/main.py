@@ -1,3 +1,8 @@
+"""
+Usage :  python main.py  --exp lstm
+
+"""
+
 from argparse import ArgumentParser
 from collections import defaultdict
 import numpy as np
@@ -30,8 +35,8 @@ def execute_experiment(exp):
         data = get_data(model, tokenizer)
         print("Data has been loaded.")
 
-        n_epochs = 20
-        train(data["train"], data["dev"], data["test"], n_epochs )
+        n_epochs = 40
+        test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp)
 
 
 

@@ -1,5 +1,7 @@
+import torch
 from torch import optim
-
+from tqdm import tqdm
+import sys
 from models import StructuralProbe
 from loss import L1DistanceLoss
 from utils.tree_utils import calc_uuas
@@ -20,11 +22,14 @@ def evaluate_probe(probe, loss_function, _data):
     uuas_score = calc_uuas(preds_new, y_new)
     return loss_score, uuas_score
 
-def train(_data, _dev_data, _test_data, epochs):
+def train(_data, _dev_data, _test_data, epochs, experiment_name, rank_dim=64):
     emb_dim = 650
-    rank = 64
+    rank = rank_dim
     lr = 10e-4
     batch_size = 15
+    model_file_path = "results/models/model_{}_{}.pt".format(experiment_name,rank_dim)
+    min_dev_loss = sys.maxsize
+    min_dev_loss_epoch = -1
 
     probe = StructuralProbe(emb_dim, rank)
     optimizer = optim.Adam(probe.parameters(), lr=lr)
@@ -34,7 +39,10 @@ def train(_data, _dev_data, _test_data, epochs):
     train_y, train_x, train_sent_lens = _data
     len_batch = train_y.size(0)
 
-    for epoch in range(epochs):
+    for epoch_index in range(epochs):
+        epoch_train_loss, epoch_dev_loss = 0,0
+        epoch_train_epoch_count,epoch_dev_epoch_count = 0, 0
+        epoch_train_loss_count, epoch_dev_loss_count = 0, 0
 
         for i in range(0, len_batch, batch_size):
             probe.train()
@@ -44,14 +52,46 @@ def train(_data, _dev_data, _test_data, epochs):
             _train_labels = train_y[i:i+batch_size]
             _train_lengths = train_sent_lens[i:i+batch_size]
             _preds = probe(_train_batch)
-            batch_loss, total_sents = loss_function(_preds, _train_labels, _train_lengths)
+            batch_loss, count = loss_function(_preds, _train_labels, _train_lengths)
+
+            epoch_train_loss += (batch_loss*count)
+            epoch_train_epoch_count += 1
+            epoch_train_loss_count += count 
+
             batch_loss.backward()
             optimizer.step()
+        
+        for i in range(0, len_batch, batch_size):
+            optimizer.zero_grad()
+            probe.eval()
 
-        dev_loss, dev_uuas = evaluate_probe(probe, loss_function, _dev_data)
-        print("Dev Loss: {}, Dev uuas: {}".format(dev_loss, dev_uuas))
-        # Using a scheduler is up to you, and might require some hyper param fine-tuning
-        scheduler.step(dev_loss)
+            _train_batch = train_x[i:i+batch_size]
+            _train_labels = train_y[i:i+batch_size]
+            _train_lengths = train_sent_lens[i:i+batch_size]
+            _preds = probe(_train_batch)
+            batch_loss, count = loss_function(_preds, _train_labels, _train_lengths)
 
-    test_loss, test_uuas = evaluate_probe(probe,loss_function,_test_data)
+            epoch_dev_loss += (batch_loss*count)
+            epoch_dev_epoch_count += 1
+            epoch_dev_loss_count += count 
+            
+        scheduler.step(epoch_dev_loss)
+        _, dev_uuas = evaluate_probe(probe, loss_function, _dev_data)
+        tqdm.write('[epoch {}] Train loss: {}, Dev loss: {}, Dev uuas: {}'.format(epoch_index, epoch_train_loss/epoch_train_loss_count,
+                  epoch_dev_loss/epoch_dev_loss_count, dev_uuas))
+        if epoch_dev_loss / epoch_dev_loss_count < min_dev_loss - 0.0001:
+            torch.save(probe.state_dict(),model_file_path)
+            min_dev_loss = epoch_dev_loss / epoch_dev_loss_count
+            min_dev_loss_epoch = epoch_index
+            tqdm.write('Saving probe parameters')
+        elif min_dev_loss_epoch < epoch_index - 4:
+            tqdm.write('Early stopping')
+            break
+
+        
+
+    best_probe = StructuralProbe(emb_dim, rank)
+    best_probe.load_state_dict(torch.load(model_file_path, map_location="cpu")) 
+    test_loss, test_uuas = evaluate_probe(best_probe,loss_function,_test_data)
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
+    return round(test_uuas*100.0, 2)
