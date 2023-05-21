@@ -2,7 +2,7 @@ import torch
 from torch import optim
 from tqdm import tqdm
 import sys
-from models import StructuralProbe
+from models import StructuralProbe, PolynomialProbe, RbfProbe, SigmoidProbe
 from loss import L1DistanceLoss
 from utils.tree_utils import calc_uuas
 
@@ -22,21 +22,23 @@ def evaluate_probe(probe, loss_function, _data):
     uuas_score = calc_uuas(preds_new, y_new)
     return loss_score, uuas_score
 
-def train(_data, _dev_data, _test_data, epochs, experiment_name, rank_dim=64):
+def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_dim=64):
     emb_dim = 650
     rank = rank_dim
     lr = 10e-4
-    batch_size = 15
-    model_file_path = "results/models/model_{}_{}.pt".format(experiment_name,rank_dim)
+    batch_size = 11
+    model_file_path = "results/models/model_{}_{}_{}.pt".format(experiment_name,rank_dim,language)
     min_dev_loss = sys.maxsize
     min_dev_loss_epoch = -1
 
     probe = StructuralProbe(emb_dim, rank)
+    # probe = SigmoidProbe(emb_dim, rank)
     optimizer = optim.Adam(probe.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5,patience=1)
     loss_function =  L1DistanceLoss()
 
     train_y, train_x, train_sent_lens = _data
+    # print("train y: ", train_y.size(), train_x.size(), train_sent_lens.size())
     len_batch = train_y.size(0)
 
     for epoch_index in range(epochs):
@@ -52,6 +54,7 @@ def train(_data, _dev_data, _test_data, epochs, experiment_name, rank_dim=64):
             _train_labels = train_y[i:i+batch_size]
             _train_lengths = train_sent_lens[i:i+batch_size]
             _preds = probe(_train_batch)
+            
             batch_loss, count = loss_function(_preds, _train_labels, _train_lengths)
 
             epoch_train_loss += (batch_loss*count)
@@ -95,3 +98,15 @@ def train(_data, _dev_data, _test_data, epochs, experiment_name, rank_dim=64):
     test_loss, test_uuas = evaluate_probe(best_probe,loss_function,_test_data)
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
     return round(test_uuas*100.0, 2)
+
+def get_best_model(exp,language,rank=64):
+    emb_dim = 650
+    model_file_path = "results/models/model_{}_{}_{}.pt".format(exp,rank,language)
+    probe = StructuralProbe(emb_dim, rank)
+    try:
+        probe.load_state_dict(torch.load(model_file_path, map_location="cpu")) 
+        print("Model has been loaded.")
+        return probe
+    except Exception as error:
+        print("Error while loading model: ", error)
+        return None

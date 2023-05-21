@@ -11,7 +11,8 @@ import pickle
 
 from lstm.model import RNNModel
 from data import get_data
-from train import train
+from train import train, get_best_model
+from visualize import get_heatmaps
 
 def dump_pkl(content, file_name):
     file = open(file_name, 'wb')
@@ -31,18 +32,29 @@ def load_lstm():
     return lstm, vocab
 
 
-def execute_experiment(exp):
+def execute_experiment(exp, language):
     if exp == "lstm":
         model, tokenizer = load_lstm()
 
-    train_probe = True # of False
+    train_probe = False # or False
+    generate_visualization = True  # or False
+
+    data = get_data(model, tokenizer,language)
+    print("Data has been loaded.")   
+
     if train_probe:
         print("Training the probe..")
-        data = get_data(model, tokenizer)
-        print("Data has been loaded.")
-        
+        print("Language:", language)
         n_epochs = 40
-        test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp)
+        test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp,language)
+
+    if generate_visualization:
+        best_model = get_best_model(exp,language)
+        if best_model:
+           get_heatmaps(best_model, data["test"], language)
+            # fig2(best_model, data["test"], language)
+            
+
         
         ## Rank Dim Experiment ##
         # rank_dim_list =  [pow(2,_) for _ in range(0,10)]
@@ -63,9 +75,10 @@ if __name__ == '__main__':
  
   argp.add_argument('--seed', default=0, type=int)
   argp.add_argument('--exp', default="lstm")
+  argp.add_argument('--lang', default="english")
   args = argp.parse_args()
   if args.seed:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
  
-  execute_experiment(args.exp)
+  execute_experiment(args.exp, args.lang)
