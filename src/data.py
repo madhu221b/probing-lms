@@ -77,27 +77,3 @@ def get_data(model, tokenizer,language="english"):
     test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
     return {"train":train_data, "dev":dev_data, "test":test_data}
 
-def get_test_data(model, data, language):
-    test_y, test_x, test_sent_lens = data
-
-    TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
-    corpus = parse_corpus(TEST_DATA_PATH)[:]
-    print(test_y.size(),test_x.size(), test_sent_lens.size(), len(corpus))
-    test_predictions = model(test_x)
-    for test_prediction, length, text in zip(test_predictions, test_sent_lens, corpus):
-        length = int(length)
-        prediction = prediction[:length,:length]
-        label = label[:length,:length].cpu()
-        words = [_["form"] for _ in text ]
-        fontsize = 5*( 1 + np.sqrt(len(words))/200)
-        plt.clf()
-        ax = sns.heatmap(label)
-        ax.set_title('Gold Parse Distance')
-        ax.set_xticks(np.arange(len(words)))
-        ax.set_yticks(np.arange(len(words)))
-        ax.set_xticklabels(words, rotation=90, fontsize=fontsize, ha='center')
-        ax.set_yticklabels(words, rotation=0, fontsize=fontsize, va='top')
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.reporting_root, split_name + '-gold'+str(images_printed)), dpi=300)
-
-
