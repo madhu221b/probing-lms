@@ -5,7 +5,7 @@ from typing import List
 from conllu import parse_incr, TokenList
 from torch import Tensor
 
-from utils import lstm_utils, tree_utils
+from utils import lstm_utils, tree_utils, gpt_utils
 
 dict_= {"english":"en_ewt",
         "tamil": "ta_ttb"
@@ -20,8 +20,13 @@ def parse_corpus(filename: str) -> List[TokenList]:
 
 def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tensor:    
     rep = []
+    print(model)
     if "GPT2LMHeadModel" in str(model):
-        print("Fetch sentence rep for GPT")
+        for ud_parse in ud_parses:
+            rep.append(gpt_utils.get_gpt_representations([ud_parse], model, tokenizer))
+        if concat:
+            rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
+        return rep
     else:
         for ud_parse in ud_parses:
             rep.append(lstm_utils.get_lstm_representations([ud_parse], model, tokenizer))

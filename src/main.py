@@ -13,6 +13,7 @@ from lstm.model import RNNModel
 from data import get_data
 from train import train, get_best_model
 from visualize import get_heatmaps
+from transformers import *
 
 def dump_pkl(content, file_name):
     file = open(file_name, 'wb')
@@ -31,12 +32,19 @@ def load_lstm():
     vocab.update(w2i)
     return lstm, vocab
 
+def load_gpt():
+    tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
+    model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+    return model, tokenizer
+
 
 def execute_experiment(exp, language):
     if exp == "lstm":
         model, tokenizer = load_lstm()
+    elif exp == "gpt":
+        model, tokenizer = load_gpt()
 
-    train_probe = False # or False
+    train_probe = True # or False
     generate_visualization = True  # or False
 
     data = get_data(model, tokenizer,language)
@@ -46,10 +54,12 @@ def execute_experiment(exp, language):
         print("Training the probe..")
         print("Language:", language)
         n_epochs = 40
-        test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp,language)
+        if exp == "gpt":
+            emb_dim = 768
+        test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp,language,emb_dim=emb_dim)
 
     if generate_visualization:
-        best_model = get_best_model(exp,language)
+        best_model = get_best_model(exp,language,emb_dim=emb_dim)
         if best_model:
            get_heatmaps(best_model, data["test"], language)
             # fig2(best_model, data["test"], language)

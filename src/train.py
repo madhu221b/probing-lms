@@ -22,8 +22,8 @@ def evaluate_probe(probe, loss_function, _data):
     uuas_score = calc_uuas(preds_new, y_new)
     return loss_score, uuas_score
 
-def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_dim=64):
-    emb_dim = 650
+def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_dim=64,emb_dim=650):
+    emb_dim = emb_dim
     rank = rank_dim
     lr = 10e-4
     batch_size = 11
@@ -99,8 +99,8 @@ def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
     return round(test_uuas*100.0, 2)
 
-def get_best_model(exp,language,rank=64):
-    emb_dim = 650
+def get_best_model(exp,language,rank=64,emb_dim=650):
+    emb_dim = emb_dim
     model_file_path = "results/models/model_{}_{}_{}.pt".format(exp,rank,language)
     probe = StructuralProbe(emb_dim, rank)
     try:
