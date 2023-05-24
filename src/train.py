@@ -105,8 +105,16 @@ def train(
                 preds = probe(train_x)
 
                 batch_loss, count = loss_function(preds, train_y, train_lens)
-
-                epoch_train_loss += (batch_loss.item()*count)
+                
+                if model != "linear": 
+                    B = probe.proj
+                    A = B.T @ B
+                    FN = torch.trace(A.T @ A) # Frobenius Norm added
+                    batch_loss = batch_loss*count + FN
+                    epoch_train_loss += (batch_loss)
+                else:
+                    epoch_train_loss += (batch_loss*count)
+                
                 epoch_train_epoch_count += 1
                 epoch_train_loss_count += count 
 
