@@ -22,17 +22,28 @@ def evaluate_probe(probe, loss_function, _data):
     uuas_score = calc_uuas(preds_new, y_new)
     return loss_score, uuas_score
 
-def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_dim=64,emb_dim=650):
+def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_dim=64,emb_dim=650,model="linear"):
     emb_dim = emb_dim
     rank = rank_dim
     lr = 10e-4
     batch_size = 11
-    model_file_path = "results/models/model_{}_{}_{}.pt".format(experiment_name,rank_dim,language)
+    model_file_path = "results/models/model_{}_{}_{}_{}.pt".format(experiment_name,rank_dim,language,model)
     min_dev_loss = sys.maxsize
     min_dev_loss_epoch = -1
+    print("Model used: {}".format(model))
+    if model == "linear":
+        print("Using Structural Probe")
+        probe = StructuralProbe(emb_dim, rank)
+    elif model == "poly":
+        print("Using Polynomial Probe")
+        probe = PolynomialProbe(emb_dim, rank)
+    elif model == "rbf":
+        print("Using Rbf Probe")
+        probe = RbfProbe(emb_dim, rank)
+    elif model == "sigmoid":
+        print("Using Sigmoid Probe")
+        probe = SigmoidProbe(emb_dim, rank)
 
-    probe = StructuralProbe(emb_dim, rank)
-    # probe = SigmoidProbe(emb_dim, rank)
     optimizer = optim.Adam(probe.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5,patience=1)
     loss_function =  L1DistanceLoss()
@@ -40,7 +51,7 @@ def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_
     train_y, train_x, train_sent_lens = _data
     # print("train y: ", train_y.size(), train_x.size(), train_sent_lens.size())
     len_batch = train_y.size(0)
-
+    epochs = 40
     for epoch_index in range(epochs):
         epoch_train_loss, epoch_dev_loss = 0,0
         epoch_train_epoch_count,epoch_dev_epoch_count = 0, 0
@@ -99,9 +110,9 @@ def train(_data, _dev_data, _test_data, epochs, experiment_name, language, rank_
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
     return round(test_uuas*100.0, 2)
 
-def get_best_model(exp,language,rank=64,emb_dim=650):
+def get_best_model(exp,language,rank=64,emb_dim=650,model="linear"):
     emb_dim = emb_dim
-    model_file_path = "results/models/model_{}_{}_{}.pt".format(exp,rank,language)
+    model_file_path = "results/models/model_{}_{}__{}_{}.pt".format(exp,rank,model,language)
     probe = StructuralProbe(emb_dim, rank)
     try:
         probe.load_state_dict(torch.load(model_file_path, map_location="cpu")) 

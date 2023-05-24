@@ -48,8 +48,8 @@ class PolynomialProbe(nn.Module):
         super().__init__()
         self.probe_rank = rank
         self.model_dim = model_dim
-        self.c = 1
-        self.d = 4
+        self.c = 0
+        self.d = 2
         self.proj = nn.Parameter(data = torch.zeros(self.model_dim, self.probe_rank))
         
         nn.init.uniform_(self.proj, -0.05, 0.05)

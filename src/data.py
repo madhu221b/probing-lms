@@ -20,7 +20,7 @@ def parse_corpus(filename: str) -> List[TokenList]:
 
 def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tensor:    
     rep = []
-    print(model)
+    # print(model)
     if "GPT2LMHeadModel" in str(model):
         for ud_parse in ud_parses:
             rep.append(gpt_utils.get_gpt_representations([ud_parse], model, tokenizer))
@@ -77,6 +77,11 @@ def get_data(model, tokenizer,language="english"):
     DEV_DATA_PATH = '../data/sample/{}-ud-dev.conllu'.format(dict_[language])
     TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
 
+    # TRAIN_DATA_PATH = '../data/{}-ud-train.conllu'.format(dict_[language])
+    # DEV_DATA_PATH = '../data/{}-ud-dev.conllu'.format(dict_[language])
+    # TEST_DATA_PATH = '../data/{}-ud-test.conllu'.format(dict_[language])
+    
+    
     train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, concat=True)
     dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, concat=True)
     test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
