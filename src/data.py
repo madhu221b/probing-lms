@@ -5,6 +5,8 @@ import pickle
 from typing import List
 from conllu import parse_incr, TokenList
 from torch import Tensor
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 from utils import lstm_utils, tree_utils, gpt_utils
 
@@ -34,13 +36,13 @@ def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tens
     rep = []
     # print(model)
     if "GPT2LMHeadModel" in str(model):
-        for ud_parse in ud_parses:
+        for ud_parse in tqdm(ud_parses):
             rep.append(gpt_utils.get_gpt_representations([ud_parse], model, tokenizer))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep
     else:
-        for ud_parse in ud_parses:
+        for ud_parse in tqdm(ud_parses):
             rep.append(lstm_utils.get_lstm_representations([ud_parse], model, tokenizer))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
@@ -84,19 +86,37 @@ def init_corpus(path, model, tokenizer, concat=False, cutoff=None):
     print("labels size in data: ", labels.size(), embs.size())
     return labels, embs, torch.Tensor(lengths)
 
-def get_data(model, tokenizer,language="english",exp="lstm"):
-    TRAIN_DATA_PATH = '../data/sample/{}-ud-train.conllu'.format(dict_[language])
-    DEV_DATA_PATH = '../data/sample/{}-ud-dev.conllu'.format(dict_[language])
-    TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
 
-    # TRAIN_DATA_PATH = '../data/{}-ud-train.conllu'.format(dict_[language])
-    # DEV_DATA_PATH = '../data/{}-ud-dev.conllu'.format(dict_[language])
-    # TEST_DATA_PATH = '../data/{}-ud-test.conllu'.format(dict_[language])
+class TokenRepresentations(Dataset):
+    def __init__(self, data, device):
+        super(Dataset).__init__()
+        self.embeddings = data[1].to(device)
+        self.labels = data[0].to(device)
+        self.sentence_lengths = data[2].to(device)
+        self.total_data = self.embeddings.size(0)
+        
+    def __getitem__(self, idx):
+        return self.embeddings[idx], self.labels[idx], self.sentence_lengths[idx]
+    
+    def __len__(self):
+        return self.total_data
+
+
+def get_data(model, tokenizer, language="english", exp="lstm", batch_size=64, device=None):
+#     TRAIN_DATA_PATH = '../data/sample/{}-ud-train.conllu'.format(dict_[language])
+#     DEV_DATA_PATH = '../data/sample/{}-ud-dev.conllu'.format(dict_[language])
+#     TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
+
+    TRAIN_DATA_PATH = '../data/{}-ud-train.conllu'.format(dict_[language])
+    DEV_DATA_PATH = '../data/{}-ud-dev.conllu'.format(dict_[language])
+    TEST_DATA_PATH = '../data/{}-ud-test.conllu'.format(dict_[language])
     DATA_PATH = 'results/data/{}_{}.pkl'.format(exp, language)
+    
     if os.path.exists(DATA_PATH):
-         data = load_pickle(DATA_PATH)
-         print("Loading data from path: {}".format(DATA_PATH))
-    else: 
+        data = load_pickle(DATA_PATH)
+        print("Loading data from path: {}".format(DATA_PATH))
+    else:
+        print("Generating representations...")
         train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, concat=True)
         dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, concat=True)
         test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
@@ -104,5 +124,16 @@ def get_data(model, tokenizer,language="english",exp="lstm"):
         dump_pkl(data, DATA_PATH )
         print("Data dumped in path: {}".format(DATA_PATH))
 
-    return data
+    loaders = []
+    
+    train_dataset = TokenRepresentations(data["train"], device=device)
+    loaders.append(DataLoader(train_dataset, batch_size=batch_size, shuffle=True))
+    
+    dev_dataset = TokenRepresentations(data["dev"], device=device)
+    loaders.append(DataLoader(dev_dataset, batch_size=batch_size, shuffle=True))
+    
+    test_dataset = TokenRepresentations(data["test"], device=device)
+    loaders.append(DataLoader(test_dataset, batch_size=batch_size, shuffle=True))
+    
+    return loaders
 

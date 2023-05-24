@@ -3,3 +3,5 @@ transformers
 torch
 nltk
 ete3
+skorch
+

@@ -1,5 +1,5 @@
 """
-Usage :  python main.py  --exp lstm --model linear
+Usage :  python main.py --exp lstm --model linear --device cuda:0
 
 """
 
@@ -38,7 +38,9 @@ def load_gpt():
     return model, tokenizer
 
 
-def execute_experiment(exp, language, s_model):
+def execute_experiment(exp, language, s_model, batch_size, device):
+    device = torch.device(device)
+    
     if exp == "lstm":
         model, tokenizer = load_lstm()
     elif exp == "gpt":
@@ -47,8 +49,8 @@ def execute_experiment(exp, language, s_model):
     train_probe = True # or False
     generate_visualization = False  # or False
 
-    data = get_data(model, tokenizer,language,exp)
-    print("Data has been loaded.")   
+    loaders = get_data(model, tokenizer, language, exp, batch_size, device)
+    print("Data has been loaded.")
 
     if train_probe:
         print("Training the probe..")
@@ -57,13 +59,12 @@ def execute_experiment(exp, language, s_model):
         emb_dim = 650
         if exp == "gpt":
             emb_dim = 768
-        test_uuas = train(data["train"], data["dev"], data["test"],
-               n_epochs, exp,language,emb_dim=emb_dim,model=s_model)
+        test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, device=device)
 
     if generate_visualization:
-        best_model = get_best_model(exp,language,emb_dim=emb_dim, model=s_model)
+        best_model = get_best_model(exp, language, emb_dim=emb_dim, model=s_model, device=device)
         if best_model:
-           get_heatmaps(best_model, data["test"], language)
+            get_heatmaps(best_model, data["test"], language)
             # fig2(best_model, data["test"], language)
             
 
@@ -83,15 +84,18 @@ def execute_experiment(exp, language, s_model):
 
 
 if __name__ == '__main__':
-  argp = ArgumentParser()
- 
-  argp.add_argument('--seed', default=0, type=int)
-  argp.add_argument('--exp', default="lstm")
-  argp.add_argument('--lang', default="english")
-  argp.add_argument('--model', default="linear")
-  args = argp.parse_args()
-  if args.seed:
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
- 
-  execute_experiment(args.exp, args.lang, args.model)
+    argp = ArgumentParser()
+
+    argp.add_argument('--seed', default=0, type=int)
+    argp.add_argument('--exp', default="lstm")
+    argp.add_argument('--lang', default="english")
+    argp.add_argument('--model', default="linear")
+    argp.add_argument('--batchsize', default=32, type=int)
+    argp.add_argument('--device', default="cuda:0")
+    
+    args = argp.parse_args()
+    if args.seed:
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+    
+    execute_experiment(args.exp, args.lang, args.model, args.batchsize, args.device)

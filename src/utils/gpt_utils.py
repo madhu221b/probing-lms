@@ -5,117 +5,28 @@ def get_gpt_representations(ud_parses, model, tokenizer):
     
     with torch.no_grad():
         all_sentence_reps = []
-        for sentence in ud_parses:
-            reformed_sent = ""
+        for sentence in ud_parses:            
             no_of_original_tokens = len(sentence)
+            inputs_ids_list = []
             
             for tok_idx in range(no_of_original_tokens):
                 token = sentence[tok_idx]['form']
+                inputs_ids_list.append(tokenizer(token, return_tensors="pt")['input_ids'])
                 
-                if (
-                    (
-                    sentence[tok_idx]['misc'] is None or 
-                    sentence[tok_idx]['form'] in ['"', "[", "]", "(", ")", ".", ",", "?", "'", "other", "can"]
-                    ) and 
-                    tok_idx != no_of_original_tokens-1
-                ):
-                    reformed_sent = reformed_sent + token + " "
-                else:
-                    reformed_sent = reformed_sent + token
+            inputs_tensor = torch.cat(inputs_ids_list, -1)
             
-            inputs = tokenizer(reformed_sent, return_tensors="pt")
-                
-            outputs = model(**inputs, output_hidden_states=True)
+            outputs = model(input_ids=inputs_tensor, output_hidden_states=True)
             final_reps = outputs.hidden_states[-1][0]
-
-            idx2 = 0
-            start_again = True
+            
             combined_reps = []
-            old_token = ""
-
-            for idx, input_id in enumerate(inputs['input_ids'][0]):
-                token = tokenizer.convert_ids_to_tokens(input_id.item())
-
-                #### Handling n't ####
-                
-                if idx2 != no_of_original_tokens-1 and sentence[idx2+1]['form'] == "n't":
-                    sentence[idx2]['form'] += sentence[idx2+1]['form'][0]
-                    sentence[idx2+1]['form'] = sentence[idx2+1]['form'][1:]
-
-                ######################
-                
-                if start_again:
-                    combined_word_piece = ""
-                    curr_rep = []
-                    start_again = False
-
-                #### Handling Déjà ####
-
-                if token == 'Ã©':
-                    token = 'é'
-                if token == 'Ãł':
-                    token = 'à'
-
-                #######################
-                
-                if token[0] == 'Ġ':
-                    cur_word_piece = token[1:]
-                else:
-                    cur_word_piece = token
-
-                #### Handling 's ####
-                
-                if token == 'âĢ':
-                    for _idx in range(3):
-                        curr_rep.append(final_reps[idx+_idx])
-                    curr_rep = torch.stack(curr_rep)
-                    combined_reps.append(curr_rep.mean(0))
-                    start_again = True
-                    old_token = token
-                    idx2 += 1
-                    continue
-                elif old_token == 'âĢ' and token == 'Ļ':
-                    start_again = True
-                    old_token = token
-                    continue
-                elif old_token == 'Ļ' and token == 's':
-                    start_again = True
-                    old_token = token
-                    continue
-
-                #####################
-
-                combined_word_piece = combined_word_piece + cur_word_piece
-                curr_rep.append(final_reps[idx])
-
-                if combined_word_piece == sentence[idx2]['form']:
-                    curr_rep = torch.stack(curr_rep)
-                    combined_reps.append(curr_rep.mean(0))
-                    start_again = True
-                    old_token = token
-                    idx2 += 1
+            idx = 0
+            
+            for input_ids in inputs_ids_list:
+                i_len = input_ids.size(-1)
+                combined_reps.append(final_reps[idx:idx+i_len].mean(0))
+                idx += i_len
         
             sentence_rep = torch.stack(combined_reps)
-
-            #### DEBUG CODE ####
-
-            if sentence_rep.size(0) != no_of_original_tokens:
-                print(f"SENT REP SIZE: {sentence_rep.size(0)} ORIG SIZE: {no_of_original_tokens}")
-                print("SENT REC: ", reformed_sent)
-
-                for tok_idx in range(no_of_original_tokens):
-                    token = sentence[tok_idx]['form']
-                    print(token, end=' ')
-                    
-                print()
-                inputs = tokenizer(reformed_sent, return_tensors="pt")
-
-                for idx, input_id in enumerate(inputs['input_ids'][0]):
-                    token = tokenizer.convert_ids_to_tokens(input_id.item())
-                    print(token, end=' ')
-                print()
-
-            ####################
             
             all_sentence_reps.append(sentence_rep)
-        return torch.cat(all_sentence_reps)
+    return torch.cat(all_sentence_reps)
