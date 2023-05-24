@@ -47,7 +47,7 @@ def execute_experiment(exp, language, s_model):
     train_probe = True # or False
     generate_visualization = False  # or False
 
-    data = get_data(model, tokenizer,language)
+    data = get_data(model, tokenizer,language,exp)
     print("Data has been loaded.")   
 
     if train_probe:

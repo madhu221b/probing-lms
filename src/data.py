@@ -1,6 +1,7 @@
+import os
 import torch
 import torch.nn as nn
-
+import pickle
 from typing import List
 from conllu import parse_incr, TokenList
 from torch import Tensor
@@ -11,6 +12,17 @@ dict_= {"english":"en_ewt",
         "tamil": "ta_ttb"
         }
 
+def load_pickle(file_name):
+    file = open(file_name, 'rb')
+    data = pickle.load(file)
+    file.close()
+    return data
+
+
+def dump_pkl(content, file_name):
+    file = open(file_name, 'wb')
+    pickle.dump(content, file)
+    file.close()
 
 def parse_corpus(filename: str) -> List[TokenList]:
     data_file = open(filename, encoding="utf-8")
@@ -72,7 +84,7 @@ def init_corpus(path, model, tokenizer, concat=False, cutoff=None):
     print("labels size in data: ", labels.size(), embs.size())
     return labels, embs, torch.Tensor(lengths)
 
-def get_data(model, tokenizer,language="english"):
+def get_data(model, tokenizer,language="english",exp="lstm"):
     TRAIN_DATA_PATH = '../data/sample/{}-ud-train.conllu'.format(dict_[language])
     DEV_DATA_PATH = '../data/sample/{}-ud-dev.conllu'.format(dict_[language])
     TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
@@ -80,10 +92,17 @@ def get_data(model, tokenizer,language="english"):
     # TRAIN_DATA_PATH = '../data/{}-ud-train.conllu'.format(dict_[language])
     # DEV_DATA_PATH = '../data/{}-ud-dev.conllu'.format(dict_[language])
     # TEST_DATA_PATH = '../data/{}-ud-test.conllu'.format(dict_[language])
-    
-    
-    train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, concat=True)
-    dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, concat=True)
-    test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
-    return {"train":train_data, "dev":dev_data, "test":test_data}
+    DATA_PATH = 'results/data/{}_{}.pkl'.format(exp, language)
+    if os.path.exists(DATA_PATH):
+         data = load_pickle(DATA_PATH)
+         print("Loading data from path: {}".format(DATA_PATH))
+    else: 
+        train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, concat=True)
+        dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, concat=True)
+        test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
+        data = {"train":train_data, "dev":dev_data, "test":test_data}
+        dump_pkl(data, DATA_PATH )
+        print("Data dumped in path: {}".format(DATA_PATH))
+
+    return data
 
