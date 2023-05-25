@@ -72,7 +72,17 @@ class PolynomialProbe(nn.Module):
         mulmatrix = torch.bmm(transformed.view(batchlen ,seqlen, rank), # (Bh_i)^T(Bh_j)
         transformed.view(batchlen, rank, seqlen))
         mulmatrix = (mulmatrix+self.c)
-        polydist = torch.pow(mulmatrix,self.d)
+        k_x_y = torch.pow(mulmatrix,self.d) # k (x, y)
+        
+        diag_entries = torch.diagonal(k_x_y, dim1 = -2, dim2 = -1)
+        diag_entries_2 = diag_entries.unsqueeze(-1)
+        repeat = torch.repeat_interleave(diag_entries_2, diag_entries_2.size(1), dim=-1)
+  
+        k_x_x = repeat
+        k_y_y = diag_entries.repeat(1,diag_entries.size(1)).view(batchlen, seqlen, seqlen)
+        
+        polydist = k_x_x - 2*k_x_y + k_y_y
+        # polydist[polydist < 0] = 0
         return polydist
 
 
