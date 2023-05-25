@@ -91,11 +91,11 @@ class PolynomialProbe(nn.Module):
         transformed = transformed.expand(-1, -1, seqlen, -1)
         transposed = transformed.transpose(1,2)
         
-        transposed = torch.pow((transposed+self.c), self.d)
-        transformed = torch.pow((transformed+self.c), self.d)
-        diffs = transformed - transposed
+        transposed = torch.pow((transposed+self.c), self.d) # (Bhi+c)^d 
+        transformed = torch.pow((transformed+self.c), self.d) # Bhj+c)^d  
+        diffs = transformed - transposed  # (Bhi+c)^d  - (Bhj+c)^d
         
-        squared_diffs = diffs.pow(2)
+        squared_diffs = diffs.pow(2)   
         squared_distances = torch.sum(squared_diffs, -1)
       
         return squared_distances
@@ -173,13 +173,28 @@ class SigmoidProbe(nn.Module):
         Returns:
           A tensor of distances of shape (batch_size, max_seq_len, max_seq_len)
             """
+        # transformed = torch.matmul(batch, self.proj)
+        # batchlen, seqlen, rank = transformed.size()
+        # transformed = torch.matmul(batch, self.proj) # B*h
+        # batchlen, seqlen, rank = transformed.size()
+        
+        # mulmatrix = torch.bmm(transformed.view(batchlen ,seqlen, rank), # (Bh_i)^T(Bh_j)
+        # transformed.view(batchlen, rank, seqlen))
+        # tanh_dists = torch.tanh(self.a*mulmatrix + self.b)
         transformed = torch.matmul(batch, self.proj)
         batchlen, seqlen, rank = transformed.size()
-        transformed = torch.matmul(batch, self.proj) # B*h
-        batchlen, seqlen, rank = transformed.size()
         
-        mulmatrix = torch.bmm(transformed.view(batchlen ,seqlen, rank), # (Bh_i)^T(Bh_j)
-        transformed.view(batchlen, rank, seqlen))
-        tanh_dists = torch.tanh(self.a*mulmatrix + self.b)
+        transformed = transformed.unsqueeze(2)
+        transformed = transformed.expand(-1, -1, seqlen, -1)
+        transposed = transformed.transpose(1,2)
+        
+        transposed = torch.tanh(self.a*transposed + self.b)
+        transformed = torch.tanh(self.a*transformed + self.b)
+        diffs = transformed - transposed
+        
+        squared_diffs = diffs.pow(2)
+        squared_distances = torch.sum(squared_diffs, -1)
+      
+        return squared_distances
         return tanh_dists
 
