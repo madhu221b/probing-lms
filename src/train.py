@@ -173,13 +173,20 @@ def train(
 
 def get_best_model(exp, language, rank=64, emb_dim=650, model="linear", device=None):
     emb_dim = emb_dim
-    model_file_path = "results/models/model_{}_{}__{}_{}.pt".format(exp,rank,model,language)
-    probe = StructuralProbe(emb_dim, rank)
+    model_file_path = "results/models/model_{}_{}_{}_{}.pt".format(exp,rank,language,model)
+    if model == "linear":
+        best_probe = StructuralProbe(emb_dim, rank)
+    elif model == "poly":
+        best_probe = PolynomialProbe(emb_dim, rank)
+    elif model == "rbf":
+        best_probe = RbfProbe(emb_dim, rank)
+    elif model == "sigmoid":
+        best_probe = SigmoidProbe(emb_dim, rank)
     try:
-        probe.load_state_dict(torch.load(model_file_path, map_location="cpu"))
-        probe = probe.to(device)
+        best_probe.load_state_dict(torch.load(model_file_path, map_location="cpu"))
+        best_probe = best_probe.to(device)
         print("Model has been loaded.")
-        return probe
+        return  best_probe
     except Exception as error:
         print("Error while loading model: ", error)
         return None
