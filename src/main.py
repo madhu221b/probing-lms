@@ -8,6 +8,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 import pickle
+import os
 
 from lstm.model import RNNModel
 from data import get_data
@@ -42,7 +43,7 @@ def load_bert():
     model = BertLMHeadModel.from_pretrained('bert-base-uncased')
     return model, tokenizer
 
-def execute_experiment(exp, language, s_model, batch_size, device):
+def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
     device = torch.device(device)
     
     if exp == "lstm":
@@ -57,10 +58,17 @@ def execute_experiment(exp, language, s_model, batch_size, device):
     else:
         print(f"{exp} IS NOT A SUPPORTED MODEL!!")
 
-    train_probe = True # or False
+        
+    ###################################################
+    ###################################################
+    train_probe = False # or False
     generate_visualization = False  # or False
+    layer_index_probing = True
+    ###################################################
+    ###################################################
+    
 
-    loaders = get_data(model, tokenizer, language, exp, batch_size, device)
+    loaders = get_data(model, tokenizer, language, exp, batch_size, layer_index, device)
     print("Data has been loaded.")
 
     if train_probe:
@@ -69,6 +77,28 @@ def execute_experiment(exp, language, s_model, batch_size, device):
         n_epochs = 100
 
         test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, device=device)
+        
+    if layer_index_probing:
+        print("Language:", language)
+        n_epochs = 100
+        print(f"Probing {exp} at layer {layer_index}")
+        s_model_list = ["linear", "poly", "rbf", "sigmoid"]
+        
+        uuas_score_dict = {
+            'model' : exp,
+            'layer' : layer_index,
+            'uuas_score' : [],
+        }
+        
+        for s_model in s_model_list:
+            print(f"\n\nTraining the {s_model} probe..")
+            test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, device=device)
+            uuas_score_dict['uuas_score'].append({s_model : test_uuas})
+            
+        score_save_path = f"results/layer_probing/{exp}"
+        os.makedirs(score_save_path, exist_ok=True)
+        
+        dump_pkl(uuas_score_dict, os.path.join(score_save_path, f"layer{layer_index}.pkl"))
 
     if generate_visualization:
         best_model = get_best_model(exp, language, emb_dim=emb_dim, model=s_model, device=device)
@@ -100,6 +130,7 @@ if __name__ == '__main__':
     argp.add_argument('--lang', default="english")
     argp.add_argument('--model', default="linear")
     argp.add_argument('--batchsize', default=32, type=int)
+    argp.add_argument('--layer_index', default=-1, type=int)
     argp.add_argument('--device', default="cuda:0")
     
     args = argp.parse_args()
@@ -107,4 +138,4 @@ if __name__ == '__main__':
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
     
-    execute_experiment(args.exp, args.lang, args.model, args.batchsize, args.device)
+    execute_experiment(args.exp, args.lang, args.model, args.batchsize, args.layer_index, args.device)

@@ -1,6 +1,6 @@
 import torch
 
-def get_transformer_representations(ud_parses, model, tokenizer):
+def get_transformer_representations(ud_parses, model, tokenizer, layer_index):
     model.eval()
     
     with torch.no_grad():
@@ -16,7 +16,7 @@ def get_transformer_representations(ud_parses, model, tokenizer):
             inputs_tensor = torch.cat(inputs_ids_list, -1)
             
             outputs = model(input_ids=inputs_tensor, output_hidden_states=True)
-            final_reps = outputs.hidden_states[-1][0]
+            final_reps = outputs.hidden_states[layer_index][0]
             
             combined_reps = []
             idx = 0

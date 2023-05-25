@@ -168,7 +168,7 @@ def train(
     test_loss, test_uuas = evaluate_probe(best_probe, loss_function, test_loader,model)
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
     
-    return round(test_uuas.item()*100.0, 2)
+    return round(test_uuas.item()*100.0, 4)
 
 
 def get_best_model(exp, language, rank=64, emb_dim=650, model="linear", device=None):

@@ -32,18 +32,18 @@ def parse_corpus(filename: str) -> List[TokenList]:
     return ud_parses
 
 
-def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tensor:    
+def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, layer_index, concat) -> Tensor:    
     rep = []
     # print(model)
     if "GPT2LMHeadModel" in str(model):
         for ud_parse in tqdm(ud_parses):
-            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer))
+            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer, layer_index))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep
     elif "BertLMHeadModel" in str(model):
         for ud_parse in tqdm(ud_parses):
-            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer))
+            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer, layer_index))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep
@@ -55,7 +55,7 @@ def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tens
         return rep
 
 
-def init_corpus(path, model, tokenizer, concat=False, cutoff=None):
+def init_corpus(path, model, tokenizer, layer_index, concat=False, cutoff=None):
     """ Initialises the data of a corpus.
     
     Parameters
@@ -72,7 +72,7 @@ def init_corpus(path, model, tokenizer, concat=False, cutoff=None):
     """
     corpus = parse_corpus(path)[:cutoff]
 
-    embs = fetch_sen_reps(corpus, model, tokenizer, concat=concat)    
+    embs = fetch_sen_reps(corpus, model, tokenizer, layer_index, concat=concat)    
     gold_distances = tree_utils.create_gold_distances(corpus)
 
     
@@ -108,7 +108,7 @@ class TokenRepresentations(Dataset):
         return self.total_data
 
 
-def get_data(model, tokenizer, language="english", exp="lstm", batch_size=64, device=None):
+def get_data(model, tokenizer, language="english", exp="lstm", batch_size=64, layer_index=-1, device=None):
 #     TRAIN_DATA_PATH = '../data/sample/{}-ud-train.conllu'.format(dict_[language])
 #     DEV_DATA_PATH = '../data/sample/{}-ud-dev.conllu'.format(dict_[language])
 #     TEST_DATA_PATH = '../data/sample/{}-ud-test.conllu'.format(dict_[language])
@@ -116,16 +116,16 @@ def get_data(model, tokenizer, language="english", exp="lstm", batch_size=64, de
     TRAIN_DATA_PATH = '../data/{}-ud-train.conllu'.format(dict_[language])
     DEV_DATA_PATH = '../data/{}-ud-dev.conllu'.format(dict_[language])
     TEST_DATA_PATH = '../data/{}-ud-test.conllu'.format(dict_[language])
-    DATA_PATH = 'results/data/{}_{}.pkl'.format(exp, language)
+    DATA_PATH = 'results/data/{}_layer{}_{}.pkl'.format(exp, str(layer_index), language)
     
     if os.path.exists(DATA_PATH):
         data = load_pickle(DATA_PATH)
         print("Loading data from path: {}".format(DATA_PATH))
     else:
         print("Generating representations...")
-        train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, concat=True)
-        dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, concat=True)
-        test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, concat=True)
+        train_data = init_corpus(TRAIN_DATA_PATH, model, tokenizer, layer_index, concat=True)
+        dev_data = init_corpus(DEV_DATA_PATH, model, tokenizer, layer_index, concat=True)
+        test_data = init_corpus(TEST_DATA_PATH, model, tokenizer, layer_index, concat=True)
         data = {"train":train_data, "dev":dev_data, "test":test_data}
         dump_pkl(data, DATA_PATH )
         print("Data dumped in path: {}".format(DATA_PATH))
