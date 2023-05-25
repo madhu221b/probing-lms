@@ -7,7 +7,7 @@ from loss import L1DistanceLoss
 from utils.tree_utils import calc_uuas
 
 
-def evaluate_probe(probe, loss_function, data_loader):
+def evaluate_probe(probe, loss_function, data_loader, model="linear"):
     probe.eval()
     
     epoch_loss = 0
@@ -21,10 +21,17 @@ def evaluate_probe(probe, loss_function, data_loader):
         eval_lens = eval_batch[2]
 
         preds = probe(eval_x)
-
+        
         batch_loss, count = loss_function(preds, eval_y, eval_lens)
-
-        epoch_loss += (batch_loss.item()*count)
+        if model != "linear": 
+                B = probe.proj
+                A = B.T @ B
+                FN = torch.trace(A.T @ A) # Frobenius Norm added
+                batch_loss = batch_loss + FN
+                epoch_loss += (batch_loss.item()*count)
+        else:
+            epoch_loss += (batch_loss.item()*count)
+        # epoch_loss += (batch_loss.item()*count)
         epoch_count += 1
         epoch_loss_count += count
     
@@ -110,8 +117,8 @@ def train(
                     B = probe.proj
                     A = B.T @ B
                     FN = torch.trace(A.T @ A) # Frobenius Norm added
-                    batch_loss = batch_loss*count + FN
-                    epoch_train_loss += (batch_loss)
+                    batch_loss = batch_loss + FN
+                    epoch_train_loss += (batch_loss*count)
                 else:
                     epoch_train_loss += (batch_loss*count)
                 
@@ -126,7 +133,7 @@ def train(
                 del preds, batch_loss
             
         epoch_train_loss = epoch_train_loss/epoch_train_loss_count
-        dev_loss, dev_uuas = evaluate_probe(probe, loss_function, dev_loader)
+        dev_loss, dev_uuas = evaluate_probe(probe, loss_function, dev_loader, model)
         scheduler.step(dev_loss)
 
         tqdm.write('Epoch: {}, Train loss: {}, Dev loss: {}, Dev uuas: {}'.format(epoch_index, epoch_train_loss, dev_loss, dev_uuas))
@@ -146,7 +153,7 @@ def train(
     
     best_probe = best_probe.to(device)
     
-    test_loss, test_uuas = evaluate_probe(best_probe, loss_function, test_loader)
+    test_loss, test_uuas = evaluate_probe(best_probe, loss_function, test_loader,model)
     print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
     
     return round(test_uuas.item()*100.0, 2)
