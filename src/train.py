@@ -15,7 +15,8 @@ def evaluate_probe(probe, loss_function, data_loader, model="linear"):
     epoch_loss_count = 0
     epoch_uuas = 0
     
-    for eval_batch in tqdm(data_loader):
+    with torch.no_grad():
+       for eval_batch in tqdm(data_loader):
         eval_x = eval_batch[0]
         eval_y = eval_batch[1]
         eval_lens = eval_batch[2]
@@ -148,7 +149,15 @@ def train(
             tqdm.write('Early stopping')
             break
 
-    best_probe = StructuralProbe(emb_dim, rank)
+    # Initializing best probe
+    if model == "linear":
+        best_probe = StructuralProbe(emb_dim, rank)
+    elif model == "poly":
+        best_probe = PolynomialProbe(emb_dim, rank)
+    elif model == "rbf":
+        best_probe = RbfProbe(emb_dim, rank)
+    elif model == "sigmoid":
+        best_probe = SigmoidProbe(emb_dim, rank)
     best_probe.load_state_dict(torch.load(model_file_path, map_location='cpu'))
     
     best_probe = best_probe.to(device)
