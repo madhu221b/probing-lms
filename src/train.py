@@ -23,7 +23,7 @@ def evaluate_probe(probe, loss_function, data_loader, model="linear"):
         preds = probe(eval_x)
         
         batch_loss, count = loss_function(preds, eval_y, eval_lens)
-        if model != "linear": 
+        if model != "linear" and False: 
                 B = probe.proj
                 A = B.T @ B
                 FN = torch.trace(A.T @ A) # Frobenius Norm added
@@ -113,7 +113,7 @@ def train(
 
                 batch_loss, count = loss_function(preds, train_y, train_lens)
                 
-                if model != "linear": 
+                if model != "linear" and False: 
                     B = probe.proj
                     A = B.T @ B
                     FN = torch.trace(A.T @ A) # Frobenius Norm added

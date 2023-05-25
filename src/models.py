@@ -66,24 +66,40 @@ class PolynomialProbe(nn.Module):
         Returns:
           A tensor of distances of shape (batch_size, max_seq_len, max_seq_len)
         """
-        transformed = torch.matmul(batch, self.proj) # B*h
+        # transformed = torch.matmul(batch, self.proj) # B*h
+        # batchlen, seqlen, rank = transformed.size()
+        
+        # mulmatrix = torch.bmm(transformed.view(batchlen ,seqlen, rank), # (Bh_i)^T(Bh_j)
+        # transformed.view(batchlen, rank, seqlen))
+        # mulmatrix = (mulmatrix+self.c)
+        # k_x_y = torch.pow(mulmatrix,self.d) # k (x, y)
+        
+        # diag_entries = torch.diagonal(k_x_y, dim1 = -2, dim2 = -1)
+        # diag_entries_2 = diag_entries.unsqueeze(-1)
+        # repeat = torch.repeat_interleave(diag_entries_2, diag_entries_2.size(1), dim=-1)
+  
+        # k_x_x = repeat
+        # k_y_y = diag_entries.repeat(1,diag_entries.size(1)).view(batchlen, seqlen, seqlen)
+        
+        # polydist = k_x_x - 2*k_x_y + k_y_y
+        # # polydist[polydist < 0] = 0
+
+        transformed = torch.matmul(batch, self.proj)
         batchlen, seqlen, rank = transformed.size()
         
-        mulmatrix = torch.bmm(transformed.view(batchlen ,seqlen, rank), # (Bh_i)^T(Bh_j)
-        transformed.view(batchlen, rank, seqlen))
-        mulmatrix = (mulmatrix+self.c)
-        k_x_y = torch.pow(mulmatrix,self.d) # k (x, y)
+        transformed = transformed.unsqueeze(2)
+        transformed = transformed.expand(-1, -1, seqlen, -1)
+        transposed = transformed.transpose(1,2)
         
-        diag_entries = torch.diagonal(k_x_y, dim1 = -2, dim2 = -1)
-        diag_entries_2 = diag_entries.unsqueeze(-1)
-        repeat = torch.repeat_interleave(diag_entries_2, diag_entries_2.size(1), dim=-1)
-  
-        k_x_x = repeat
-        k_y_y = diag_entries.repeat(1,diag_entries.size(1)).view(batchlen, seqlen, seqlen)
+        transposed = torch.pow((transposed+self.c), self.d)
+        transformed = torch.pow((transformed+self.c), self.d)
+        diffs = transformed - transposed
         
-        polydist = k_x_x - 2*k_x_y + k_y_y
-        # polydist[polydist < 0] = 0
-        return polydist
+        squared_diffs = diffs.pow(2)
+        squared_distances = torch.sum(squared_diffs, -1)
+      
+        return squared_distances
+        # return polydist
 
 
 class RbfProbe(nn.Module):
@@ -108,16 +124,31 @@ class RbfProbe(nn.Module):
         Returns:
           A tensor of distances of shape (batch_size, max_seq_len, max_seq_len)
             """
+        # transformed = torch.matmul(batch, self.proj)
+        # batchlen, seqlen, rank = transformed.size()
+        # transformed = transformed.unsqueeze(2)
+        # transformed = transformed.expand(-1, -1, seqlen, -1)
+        # transposed = transformed.transpose(1,2)
+        # diffs = transformed - transposed
+        # squared_diffs = diffs.pow(2)
+        # squared_distances = torch.sum(squared_diffs, -1)
+        # exp_dists = torch.exp(-squared_distances/(2*pow(self.sigma,2)))
         transformed = torch.matmul(batch, self.proj)
         batchlen, seqlen, rank = transformed.size()
+        
         transformed = transformed.unsqueeze(2)
         transformed = transformed.expand(-1, -1, seqlen, -1)
         transposed = transformed.transpose(1,2)
+        
+        transposed = torch.exp(-transposed/(2*pow(self.sigma,2)))
+        transformed = torch.exp(-transformed/(2*pow(self.sigma,2)))
         diffs = transformed - transposed
+        
         squared_diffs = diffs.pow(2)
         squared_distances = torch.sum(squared_diffs, -1)
-        exp_dists = torch.exp(-squared_distances/(2*pow(self.sigma,2)))
-        return exp_dists
+      
+        return squared_distances
+        # return exp_dists
 
 class SigmoidProbe(nn.Module):
     def __init__(self, model_dim, rank, device="cpu"):
