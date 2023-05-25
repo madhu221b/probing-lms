@@ -1,6 +1,6 @@
 import torch
 
-def get_gpt_representations(ud_parses, model, tokenizer):
+def get_transformer_representations(ud_parses, model, tokenizer):
     model.eval()
     
     with torch.no_grad():

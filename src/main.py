@@ -13,7 +13,7 @@ from lstm.model import RNNModel
 from data import get_data
 from train import train, get_best_model
 from visualize import get_heatmaps
-from transformers import *
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, AutoTokenizer, BertLMHeadModel
 
 def dump_pkl(content, file_name):
     file = open(file_name, 'wb')
@@ -37,14 +37,25 @@ def load_gpt():
     model = GPT2LMHeadModel.from_pretrained('distilgpt2')
     return model, tokenizer
 
+def load_bert():
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+    model = BertLMHeadModel.from_pretrained('bert-base-uncased')
+    return model, tokenizer
 
 def execute_experiment(exp, language, s_model, batch_size, device):
     device = torch.device(device)
     
     if exp == "lstm":
         model, tokenizer = load_lstm()
+        emb_dim = 650
     elif exp == "gpt":
         model, tokenizer = load_gpt()
+        emb_dim = 768
+    elif exp == "bert":
+        model, tokenizer = load_bert()
+        emb_dim = 768
+    else:
+        print(f"{exp} IS NOT A SUPPORTED MODEL!!")
 
     train_probe = True # or False
     generate_visualization = False  # or False
@@ -55,10 +66,8 @@ def execute_experiment(exp, language, s_model, batch_size, device):
     if train_probe:
         print("Training the probe..")
         print("Language:", language)
-        n_epochs = 40
-        emb_dim = 650
-        if exp == "gpt":
-            emb_dim = 768
+        n_epochs = 100
+
         test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, device=device)
 
     if generate_visualization:

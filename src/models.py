@@ -196,5 +196,5 @@ class SigmoidProbe(nn.Module):
         squared_distances = torch.sum(squared_diffs, -1)
       
         return squared_distances
-        return tanh_dists
+#         return tanh_dists
 

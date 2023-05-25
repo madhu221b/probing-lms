@@ -8,7 +8,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from utils import lstm_utils, tree_utils, gpt_utils
+from utils import lstm_utils, tree_utils, transformer_utils
 
 dict_= {"english":"en_ewt",
         "tamil": "ta_ttb"
@@ -37,7 +37,13 @@ def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, concat) -> Tens
     # print(model)
     if "GPT2LMHeadModel" in str(model):
         for ud_parse in tqdm(ud_parses):
-            rep.append(gpt_utils.get_gpt_representations([ud_parse], model, tokenizer))
+            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer))
+        if concat:
+            rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
+        return rep
+    elif "BertLMHeadModel" in str(model):
+        for ud_parse in tqdm(ud_parses):
+            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep

@@ -149,6 +149,9 @@ def train(
             tqdm.write('Early stopping')
             break
 
+    test_loss, test_uuas = evaluate_probe(probe, loss_function, test_loader,model)
+    print("Test Loss: {}, Test uuas: {}".format(test_loss, test_uuas))
+    
     # Initializing best probe
     if model == "linear":
         best_probe = StructuralProbe(emb_dim, rank)
