@@ -73,8 +73,14 @@ def calc_uuas(pred_distances, gold_distances):
     uuas = 0
     
     for pred_matrix, gold_matrix in zip(pred_distances, gold_distances):
+      
         pred_mst = create_mst(pred_matrix.to(torch.device('cpu')))
         gold_mst = create_mst(gold_matrix.to(torch.device('cpu')))
+
+       #  print("pred matrix: ", pred_matrix, file=open("poly.txt", "a"))
+        # print("gold matrix: ", gold_matrix, file=open("gold.txt", "a"))
+       #  break
+        
         pred_edges = edges(pred_mst)
         gold_edges = edges(gold_mst)
         edges_pg = pred_edges & gold_edges
