@@ -138,10 +138,11 @@ class RbfProbe(nn.Module):
         
         transformed = transformed.unsqueeze(2)
         transformed = transformed.expand(-1, -1, seqlen, -1)
+        transformed = torch.exp(-torch.pow(transformed,2)/(2*pow(self.sigma,2)))
         transposed = transformed.transpose(1,2)
         
-        transposed = torch.exp(-torch.pow(transposed,2)/(2*pow(self.sigma,2)))
-        transformed = torch.exp(-torch.pow(transformed,2)/(2*pow(self.sigma,2)))
+        # transposed = torch.exp(-torch.pow(transposed,2)/(2*pow(self.sigma,2)))
+        
         diffs = transformed - transposed
         
         squared_diffs = diffs.pow(2)
