@@ -37,13 +37,13 @@ def fetch_sen_reps(ud_parses: List[TokenList], model, tokenizer, layer_index, co
     # print(model)
     if "GPT2LMHeadModel" in str(model):
         for ud_parse in tqdm(ud_parses):
-            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer, layer_index))
+            rep.append(transformer_utils.get_gpt_representations([ud_parse], model, tokenizer, layer_index))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep
-    elif "BertLMHeadModel" in str(model):
+    elif "BertModel" in str(model):
         for ud_parse in tqdm(ud_parses):
-            rep.append(transformer_utils.get_transformer_representations([ud_parse], model, tokenizer, layer_index))
+            rep.append(transformer_utils.get_bert_representations([ud_parse], model, tokenizer, layer_index))
         if concat:
             rep = nn.utils.rnn.pad_sequence(rep, batch_first=True)
         return rep
@@ -129,6 +129,10 @@ def get_data(model, tokenizer, language="english", exp="lstm", batch_size=64, la
         data = {"train":train_data, "dev":dev_data, "test":test_data}
         dump_pkl(data, DATA_PATH )
         print("Data dumped in path: {}".format(DATA_PATH))
+        
+        TEST_DATA_PATH = 'results/data/{}_layer{}_{}_test.pkl'.format(exp, str(layer_index), language)
+        dump_pkl(data["test"], TEST_DATA_PATH)
+        print("Test data dumped in path: {}".format(TEST_DATA_PATH))
 
     loaders = []
     

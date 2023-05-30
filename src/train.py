@@ -62,12 +62,13 @@ def train(
     rank=64, 
     emb_dim=650, 
     model="linear",
+    layer_idx=None,
     lr=10e-4,
     device=None,
 ):
     
     train_loader, dev_loader, test_loader = loaders
-    model_file_path = "results/models/model_{}_{}_{}_{}.pt".format(experiment_name, rank, language, model)
+    model_file_path = "results/models/model_{}_{}_{}_{}_layer{}.pt".format(experiment_name, rank, language, model, layer_idx)
     min_dev_loss = sys.maxsize
     min_dev_loss_epoch = -1
     

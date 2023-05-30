@@ -14,7 +14,7 @@ from lstm.model import RNNModel
 from data import get_data
 from train import train, get_best_model
 from visualize import get_heatmaps
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, AutoTokenizer, BertLMHeadModel
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, BertTokenizer, BertModel
 
 def dump_pkl(content, file_name):
     file = open(file_name, 'wb')
@@ -34,13 +34,18 @@ def load_lstm():
     return lstm, vocab
 
 def load_gpt():
-    tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
-    model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    model = GPT2LMHeadModel.from_pretrained('gpt2')
     return model, tokenizer
 
 def load_bert():
-    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    model = BertLMHeadModel.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+    model = BertModel.from_pretrained('bert-base-cased')
+    return model, tokenizer
+
+def load_bertL():
+    tokenizer = BertTokenizer.from_pretrained('bert-large-cased')
+    model = BertModel.from_pretrained('bert-large-cased')
     return model, tokenizer
 
 def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
@@ -55,6 +60,9 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
     elif exp == "bert":
         model, tokenizer = load_bert()
         emb_dim = 768
+    elif exp == "bertL":
+        model, tokenizer = load_bertL()
+        emb_dim = 1024
     else:
         print(f"{exp} IS NOT A SUPPORTED MODEL!!")
 
@@ -80,9 +88,10 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
         
     if layer_index_probing:
         print("Language:", language)
-        n_epochs = 100
+        n_epochs = 200
         print(f"Probing {exp} at layer {layer_index}")
-        s_model_list = ["linear", "poly", "rbf", "sigmoid"]
+        s_model_list = ["poly", "rbf", "sigmoid"]
+#         s_model_list = ["linear"]
         
         uuas_score_dict = {
             'model' : exp,
@@ -92,7 +101,7 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
         
         for s_model in s_model_list:
             print(f"\n\nTraining the {s_model} probe..")
-            test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, device=device)
+            test_uuas = train(loaders, n_epochs, exp, language, emb_dim=emb_dim, model=s_model, layer_idx=layer_index, device=device)
             uuas_score_dict['uuas_score'].append({s_model : test_uuas})
             
         score_save_path = f"results/layer_probing/{exp}"
