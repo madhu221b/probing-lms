@@ -89,9 +89,10 @@ class PolynomialProbe(nn.Module):
         
         transformed = transformed.unsqueeze(2)
         transformed = transformed.expand(-1, -1, seqlen, -1)
+        transformed = torch.pow((transformed+self.c), self.d) # Bhj+c)^d  
         transposed = transformed.transpose(1,2)
         
-        transposed = torch.pow((transposed+self.c), self.d) # (Bhi+c)^d 
+        # transposed = torch.pow((transposed+self.c), self.d) # (Bhi+c)^d 
         transformed = torch.pow((transformed+self.c), self.d) # Bhj+c)^d  
         diffs = transformed - transposed  # (Bhi+c)^d  - (Bhj+c)^d
         
@@ -187,9 +188,10 @@ class SigmoidProbe(nn.Module):
         
         transformed = transformed.unsqueeze(2)
         transformed = transformed.expand(-1, -1, seqlen, -1)
+        transformed = torch.tanh(self.a*transformed + self.b)
         transposed = transformed.transpose(1,2)
         
-        transposed = torch.tanh(self.a*transposed + self.b)
+        # transposed = torch.tanh(self.a*transposed + self.b)
         transformed = torch.tanh(self.a*transformed + self.b)
         diffs = transformed - transposed
         
