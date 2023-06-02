@@ -6,6 +6,8 @@ Repository for the NLP2 assignment on probing language models.
 
 The experiement name values can be: lstm, bert, bertL, gpt
 
+(The state_dict.pt for Gulordava LSTM model can be found here: https://drive.google.com/file/d/19Lp3AM4NEPycp_IBgoHfLc_V456pmUom/view?usp=sharing)
+
 And the layer index values can be 1 to 12 for gpt and bert and 1 to 24 for bertL.
 
 ### Run single probe training
