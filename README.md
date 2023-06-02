@@ -4,7 +4,7 @@ Repository for the NLP2 assignment on probing language models.
 
 ## Main Caller function to train the probes 
 
-The experiement name values can be: bert, bertL, gpt
+The experiement name values can be: lstm, bert, bertL, gpt
 
 And the layer index values can be 1 to 12 for gpt and bert and 1 to 24 for bertL.
 
