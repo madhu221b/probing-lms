@@ -48,7 +48,14 @@ def load_bertL():
     model = BertModel.from_pretrained('bert-large-cased')
     return model, tokenizer
 
-def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
+def execute_experiment(args):
+    exp = args.exp
+    language = args.lang
+    s_model = args.model
+    batch_size = args.batchsize
+    layer_index = args.layer_index
+    device = args.device
+    
     device = torch.device(device)
     
     if exp == "lstm":
@@ -69,9 +76,10 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
         
     ###################################################
     ###################################################
-    train_probe = False # or False
-    generate_visualization = False  # or False
-    layer_index_probing = True
+    train_probe = args.train_probe
+    generate_visualization = args.generate_visualization
+    layer_index_probing = args.layer_index_probing
+    experiment_rank_dim = args.experiment_rank_dim
     ###################################################
     ###################################################
     
@@ -90,7 +98,7 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
         print("Language:", language)
         n_epochs = 200
         print(f"Probing {exp} at layer {layer_index}")
-        s_model_list = ["poly", "rbf", "sigmoid"]
+        s_model_list = ["linear", "poly", "rbf", "sigmoid"]
 #         s_model_list = ["linear"]
         
         uuas_score_dict = {
@@ -118,17 +126,26 @@ def execute_experiment(exp, language, s_model, batch_size, layer_index, device):
 
         
         ## Rank Dim Experiment ##
-        # rank_dim_list =  [pow(2,_) for _ in range(0,10)]
-        # test_uuas_list = []
-        # for rank_dim in rank_dim_list:
-        #    test_uuas = train(data["train"], data["dev"], data["test"], n_epochs, exp, rank_dim=rank_dim)
-        #    test_uuas_list.append(test_uuas)
-        #    print("Test UUAS : {}, Rank Dim : {}".format(test_uuas, rank_dim))
-
-        # data = {"rankdim":rank_dim_list, "uuas":test_uuas_list}
-        # dump_pkl(data, "results/plots/ranks_{}.pkl".format(exp))
+    if experiment_rank_dim:
+        print("Language:", language)
+        n_epochs = 200
+        print(f"Rank dimension experiment on {exp} at layer {layer_index}")
+        rank_plot_save_path = f"results/plots/ranks/{exp}"
+        os.makedirs(rank_plot_save_path, exist_ok=True)
         
-
+        rank_dim_list =  [pow(2,_) for _ in range(0,9)]
+        s_model_list = ["linear", "poly", "rbf", "sigmoid"]
+        
+        for s_model in s_model_list:
+            test_uuas_list = []
+            for rank_dim in rank_dim_list:
+                test_uuas = train(loaders, n_epochs, exp, language, rank=rank_dim, emb_dim=emb_dim, model=s_model,
+                                  layer_idx=layer_index, device=device)
+                test_uuas_list.append(test_uuas)
+                print("Test UUAS : {}, Rank Dim : {}".format(test_uuas, rank_dim))
+            
+            data = {"smodel" : s_model, "rankdim" : rank_dim_list, "uuas" : test_uuas_list}
+            dump_pkl(data, os.path.join(rank_plot_save_path, f"ranks_{s_model}.pkl"))
 
 
 if __name__ == '__main__':
@@ -142,9 +159,14 @@ if __name__ == '__main__':
     argp.add_argument('--layer_index', default=-1, type=int)
     argp.add_argument('--device', default="cuda:0")
     
+    parser.add_argument('--train_probe', action='store_true')
+    parser.add_argument('--layer_index_probing', action='store_true')
+    parser.add_argument('--experiment_rank_dim', action='store_true')
+    parser.add_argument('--generate_visualization', action='store_true')
+    
     args = argp.parse_args()
     if args.seed:
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
     
-    execute_experiment(args.exp, args.lang, args.model, args.batchsize, args.layer_index, args.device)
+    execute_experiment(args)
