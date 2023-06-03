@@ -2,6 +2,7 @@
 
 Repository for the NLP2 assignment on probing language models.
 
+All the required pkl model files can be found here: https://amsuni-my.sharepoint.com/:f:/r/personal/madhura_pawar_student_uva_nl/Documents/Probing?csf=1&web=1&e=SDNzKy. Please  request for access. 
 ## Main Caller function to train the probes 
 
 The experiement name values can be: lstm, bert, bertL, gpt
